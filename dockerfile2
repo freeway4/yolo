@@ -1,0 +1,38 @@
+# -------------------------------
+# Dockerfile for YOLOv3 (Darknet)
+# -------------------------------
+
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 필수 패키지 설치
+RUN apt-get update && apt-get install -y \
+    git gcc g++ make wget ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 작업 디렉토리
+WORKDIR /darknet
+
+# 호스트의 darknet 폴더 복사
+COPY darknet /darknet
+
+# Darknet 빌드 (CPU 전용)
+RUN sed -i 's/GPU=1/GPU=0/' Makefile && \
+    sed -i 's/CUDNN=1/CUDNN=0/' Makefile && \
+    sed -i 's/OPENCV=1/OPENCV=0/' Makefile && \
+    make
+
+# YOLOv3 weights 다운로드
+RUN if [ ! -f yolov3.weights ]; then \
+        wget https://pjreddie.com/media/files/yolov3.weights; \
+    fi
+
+# run_yolo.sh 스크립트 복사
+COPY run_yolo.sh /app/run_yolo.sh
+RUN chmod +x /app/run_yolo.sh
+
+WORKDIR /app
+
+# entrypoint를 run_yolo.sh로 변경
+ENTRYPOINT ["/app/run_yolo.sh"]
